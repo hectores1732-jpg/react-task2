@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import {
   View,
@@ -24,6 +24,7 @@ const COLORS = {
   border: '#E5E7EB',
   online: '#22C55E',
   offline: '#9CA3AF',
+  error: '#DC2626',
 };
 
 const BIO =
@@ -45,32 +46,83 @@ function formatCount(n) {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+// BONUS 3: Reusable Tag component
+function Tag({ label, selected, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.tag,
+        selected && styles.tagSelected,
+        pressed && styles.pressed,
+      ]}
+    >
+      <Text
+        style={[
+          styles.tagText,
+          selected && styles.tagTextSelected,
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function App() {
   // STEP 3: Follow / Unfollow
   const [isFollowing, setIsFollowing] = useState(false);
 
+  // Derived value, not another state
   const followers = BASE_FOLLOWERS + (isFollowing ? 1 : 0);
+
+  // BONUS 1: Disable Follow for 2 seconds
+  const [isBusy, setIsBusy] = useState(false);
+  const followTimerRef = useRef(null);
 
   // STEP 4: Message composer
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [message, setMessage] = useState('');
+
+  // BONUS 2: Message validation
+  const [messageError, setMessageError] = useState('');
 
   // STEP 5: Interactive profile
   const [isBioExpanded, setIsBioExpanded] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [selectedSkills, setSelectedSkills] = useState([]);
 
-  // Follow button
+  // Clean up timer when component unmounts
+  useEffect(() => {
+    return () => {
+      if (followTimerRef.current !== null) {
+        clearTimeout(followTimerRef.current);
+      }
+    };
+  }, []);
+
+  // STEP 3 + BONUS 1: Follow / Unfollow
   const handleFollowPress = () => {
+    if (isBusy) {
+      return;
+    }
+
     setIsFollowing(previous => !previous);
+    setIsBusy(true);
+
+    followTimerRef.current = setTimeout(() => {
+      setIsBusy(false);
+      followTimerRef.current = null;
+    }, 2000);
   };
 
-  // Message button
+  // STEP 4: Open / Close composer
   const handleMessagePress = () => {
     setIsComposerOpen(previous => !previous);
+    setMessageError('');
   };
 
-  // Send message
+  // STEP 4 + BONUS 2: Send message
   const handleSendPress = () => {
     const trimmedMessage = message.trim();
 
@@ -78,23 +130,36 @@ export default function App() {
       return;
     }
 
+    // BONUS 2: Show error when maximum length is reached
+    if (message.length === MAX_MESSAGE) {
+      setMessageError('Longitud máxima alcanzada');
+      return;
+    }
+
     Alert.alert('Message sent', trimmedMessage);
 
     setMessage('');
+    setMessageError('');
     setIsComposerOpen(false);
   };
 
-  // Share button
+  // Update message and clear previous error
+  const handleMessageChange = (newText) => {
+    setMessage(newText);
+    setMessageError('');
+  };
+
+  // STEP 1: Share
   const handleSharePress = () => {
     Alert.alert('Share', 'You pressed Profile');
   };
 
-  // STEP 5: Toggle biography
+  // STEP 5: Expand / Collapse biography
   const handleBioPress = () => {
     setIsBioExpanded(previous => !previous);
   };
 
-  // STEP 5: Toggle online status
+  // STEP 5: Online / Offline
   const handleAvatarPress = () => {
     setIsOnline(previous => !previous);
   };
@@ -110,12 +175,14 @@ export default function App() {
     });
   };
 
+  // Statistics
   const stats = [
     { label: 'Projects', value: '24' },
     { label: 'Followers', value: formatCount(followers) },
     { label: 'Following', value: '180' },
   ];
 
+  // Disable Send when message is empty or only spaces
   const isSendDisabled = message.trim().length === 0;
 
   return (
@@ -137,7 +204,12 @@ export default function App() {
 
           {/* STEP 5: Interactive avatar */}
           <View style={styles.headerRow}>
-            <Pressable onPress={handleAvatarPress}>
+
+            <Pressable
+              onPress={handleAvatarPress}
+              accessibilityRole="button"
+              accessibilityLabel="Toggle online status"
+            >
               <Image
                 source={require('./assets/avatar.png')}
                 style={styles.avatar}
@@ -164,6 +236,7 @@ export default function App() {
                 Lisbon, Portugal
               </Text>
             </View>
+
           </View>
 
           {/* STEP 5: Expandable biography */}
@@ -201,50 +274,37 @@ export default function App() {
             ))}
           </View>
 
-          {/* STEP 5: Selectable skills */}
+          {/* STEP 5 + BONUS 3: Reusable Tags */}
           <View style={styles.tags}>
-            {SKILLS.map((skill) => {
-              const isSelected = selectedSkills.includes(skill);
-
-              return (
-                <Pressable
-                  key={skill}
-                  onPress={() => handleSkillPress(skill)}
-                  style={({ pressed }) => [
-                    styles.tag,
-                    isSelected && styles.tagSelected,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.tagText,
-                      isSelected && styles.tagTextSelected,
-                    ]}
-                  >
-                    {skill}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {SKILLS.map((skill) => (
+              <Tag
+                key={skill}
+                label={skill}
+                selected={selectedSkills.includes(skill)}
+                onPress={() => handleSkillPress(skill)}
+              />
+            ))}
           </View>
 
           <Text style={styles.skillsHint}>
             Tap a skill to select it · {selectedSkills.length} selected
           </Text>
 
-          {/* Follow and Message buttons */}
+          {/* Action buttons */}
           <View style={styles.actions}>
 
+            {/* Follow / Following */}
             <Pressable
+              onPress={handleFollowPress}
+              disabled={isBusy}
               style={({ pressed }) => [
                 styles.button,
                 isFollowing
                   ? styles.buttonFollowing
                   : styles.buttonPrimary,
-                pressed && styles.pressed,
+                pressed && !isBusy && styles.pressed,
+                isBusy && styles.buttonDisabled,
               ]}
-              onPress={handleFollowPress}
             >
               <Text
                 style={[
@@ -256,12 +316,13 @@ export default function App() {
               </Text>
             </Pressable>
 
+            {/* Message / Close */}
             <Pressable
+              onPress={handleMessagePress}
               style={({ pressed }) => [
                 styles.button,
                 pressed && styles.pressed,
               ]}
-              onPress={handleMessagePress}
             >
               <Text style={styles.buttonText}>
                 {isComposerOpen ? 'Close' : 'Message'}
@@ -273,11 +334,13 @@ export default function App() {
           {/* STEP 4: Message composer */}
           {isComposerOpen && (
             <View style={styles.composer}>
+
               <TextInput
                 style={styles.messageInput}
                 placeholder="Write your message..."
+                placeholderTextColor={COLORS.muted}
                 value={message}
-                onChangeText={setMessage}
+                onChangeText={handleMessageChange}
                 maxLength={MAX_MESSAGE}
                 multiline
               />
@@ -286,6 +349,14 @@ export default function App() {
                 {message.length}/{MAX_MESSAGE}
               </Text>
 
+              {/* BONUS 2: Error message */}
+              {messageError !== '' && (
+                <Text style={styles.errorText}>
+                  {messageError}
+                </Text>
+              )}
+
+              {/* Send button */}
               <Pressable
                 onPress={handleSendPress}
                 disabled={isSendDisabled}
@@ -299,10 +370,11 @@ export default function App() {
                   Send
                 </Text>
               </Pressable>
+
             </View>
           )}
 
-          {/* Share button */}
+          {/* Share */}
           <View style={styles.shareWrapper}>
             <Button
               title="Share profile"
@@ -518,6 +590,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
   },
 
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+
   buttonText: {
     fontSize: 15,
     fontWeight: '600',
@@ -551,6 +627,12 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: 12,
     color: COLORS.muted,
+  },
+
+  errorText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: COLORS.error,
   },
 
   sendButton: {
