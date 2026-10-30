@@ -1,4 +1,6 @@
 
+import { useState } from 'react';
+
 import {
   View,
   Text,
@@ -11,8 +13,6 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-
-import { useState } from 'react';
 
 const COLORS = {
   background: '#EEF1F6',
@@ -40,13 +40,12 @@ const SKILLS = [
 const BASE_FOLLOWERS = 1200;
 const MAX_MESSAGE = 140;
 
-// Adds thousands separators: 1200 -> '1,200'
+// Formats 1200 as 1,200
 function formatCount(n) {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 export default function App() {
-
   // STEP 3: Follow / Unfollow
   const [isFollowing, setIsFollowing] = useState(false);
 
@@ -56,16 +55,59 @@ export default function App() {
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [message, setMessage] = useState('');
 
+  // STEP 5: Interactive profile
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [selectedSkills, setSelectedSkills] = useState([]);
+
+  // Follow button
   const handleFollowPress = () => {
     setIsFollowing(previous => !previous);
   };
 
+  // Message button
   const handleMessagePress = () => {
     setIsComposerOpen(previous => !previous);
   };
 
+  // Send message
+  const handleSendPress = () => {
+    const trimmedMessage = message.trim();
+
+    if (trimmedMessage.length === 0) {
+      return;
+    }
+
+    Alert.alert('Message sent', trimmedMessage);
+
+    setMessage('');
+    setIsComposerOpen(false);
+  };
+
+  // Share button
   const handleSharePress = () => {
     Alert.alert('Share', 'You pressed Profile');
+  };
+
+  // STEP 5: Toggle biography
+  const handleBioPress = () => {
+    setIsBioExpanded(previous => !previous);
+  };
+
+  // STEP 5: Toggle online status
+  const handleAvatarPress = () => {
+    setIsOnline(previous => !previous);
+  };
+
+  // STEP 5: Select / Deselect skills
+  const handleSkillPress = (skill) => {
+    setSelectedSkills(previous => {
+      if (previous.includes(skill)) {
+        return previous.filter(item => item !== skill);
+      }
+
+      return [...previous, skill];
+    });
   };
 
   const stats = [
@@ -73,6 +115,8 @@ export default function App() {
     { label: 'Followers', value: formatCount(followers) },
     { label: 'Following', value: '180' },
   ];
+
+  const isSendDisabled = message.trim().length === 0;
 
   return (
     <ScrollView
@@ -91,29 +135,50 @@ export default function App() {
 
         <View style={styles.body}>
 
-          {/* Header */}
+          {/* STEP 5: Interactive avatar */}
           <View style={styles.headerRow}>
-
-            <View>
+            <Pressable onPress={handleAvatarPress}>
               <Image
                 source={require('./assets/avatar.png')}
                 style={styles.avatar}
               />
-              <View style={styles.onlineBadge} />
-            </View>
+
+              <View
+                style={[
+                  styles.onlineBadge,
+                  !isOnline && styles.offlineBadge,
+                ]}
+              />
+            </Pressable>
 
             <View style={styles.headerText}>
-              <Text style={styles.name}>Alex Rivera</Text>
-              <Text style={styles.role}>Mobile Developer</Text>
-              <Text style={styles.location}>Lisbon, Portugal</Text>
-            </View>
+              <Text style={styles.name}>
+                Alex Rivera
+              </Text>
 
+              <Text style={styles.role}>
+                Mobile Developer
+              </Text>
+
+              <Text style={styles.location}>
+                Lisbon, Portugal
+              </Text>
+            </View>
           </View>
 
-          {/* Bio - STEP 5 pending */}
-          <Text style={styles.bio} numberOfLines={3}>
+          {/* STEP 5: Expandable biography */}
+          <Text
+            style={styles.bio}
+            numberOfLines={isBioExpanded ? undefined : 3}
+          >
             {BIO}
           </Text>
+
+          <Pressable onPress={handleBioPress}>
+            <Text style={styles.readMoreText}>
+              {isBioExpanded ? 'Show less' : 'Read more'}
+            </Text>
+          </Pressable>
 
           {/* Statistics */}
           <View style={styles.statsRow}>
@@ -136,21 +201,41 @@ export default function App() {
             ))}
           </View>
 
-          {/* Skills - STEP 5 pending */}
+          {/* STEP 5: Selectable skills */}
           <View style={styles.tags}>
-            {SKILLS.map((skill) => (
-              <View key={skill} style={styles.tag}>
-                <Text style={styles.tagText}>
-                  {skill}
-                </Text>
-              </View>
-            ))}
+            {SKILLS.map((skill) => {
+              const isSelected = selectedSkills.includes(skill);
+
+              return (
+                <Pressable
+                  key={skill}
+                  onPress={() => handleSkillPress(skill)}
+                  style={({ pressed }) => [
+                    styles.tag,
+                    isSelected && styles.tagSelected,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tagText,
+                      isSelected && styles.tagTextSelected,
+                    ]}
+                  >
+                    {skill}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          {/* Action buttons */}
+          <Text style={styles.skillsHint}>
+            Tap a skill to select it · {selectedSkills.length} selected
+          </Text>
+
+          {/* Follow and Message buttons */}
           <View style={styles.actions}>
 
-            {/* Follow */}
             <Pressable
               style={({ pressed }) => [
                 styles.button,
@@ -171,7 +256,6 @@ export default function App() {
               </Text>
             </Pressable>
 
-            {/* Message */}
             <Pressable
               style={({ pressed }) => [
                 styles.button,
@@ -189,7 +273,6 @@ export default function App() {
           {/* STEP 4: Message composer */}
           {isComposerOpen && (
             <View style={styles.composer}>
-
               <TextInput
                 style={styles.messageInput}
                 placeholder="Write your message..."
@@ -203,12 +286,23 @@ export default function App() {
                 {message.length}/{MAX_MESSAGE}
               </Text>
 
-              {/* TODO STEP 4: Add Send button */}
-
+              <Pressable
+                onPress={handleSendPress}
+                disabled={isSendDisabled}
+                style={({ pressed }) => [
+                  styles.sendButton,
+                  isSendDisabled && styles.sendButtonDisabled,
+                  pressed && !isSendDisabled && styles.pressed,
+                ]}
+              >
+                <Text style={styles.sendButtonText}>
+                  Send
+                </Text>
+              </Pressable>
             </View>
           )}
 
-          {/* Share */}
+          {/* Share button */}
           <View style={styles.shareWrapper}>
             <Button
               title="Share profile"
@@ -237,7 +331,6 @@ const cardShadow = Platform.select({
 });
 
 const styles = StyleSheet.create({
-
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -294,6 +387,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.card,
   },
 
+  offlineBadge: {
+    backgroundColor: COLORS.offline,
+  },
+
   headerText: {
     flex: 1,
     marginLeft: 14,
@@ -324,6 +421,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: COLORS.text,
+  },
+
+  readMoreText: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 
   statsRow: {
@@ -371,10 +475,24 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
 
+  tagSelected: {
+    backgroundColor: COLORS.primary,
+  },
+
   tagText: {
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+
+  tagTextSelected: {
+    color: '#FFFFFF',
+  },
+
+  skillsHint: {
+    marginTop: 8,
+    fontSize: 12,
+    color: COLORS.muted,
   },
 
   actions: {
@@ -435,9 +553,26 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
   },
 
+  sendButton: {
+    marginTop: 12,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+
+  sendButtonDisabled: {
+    opacity: 0.4,
+  },
+
+  sendButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
   shareWrapper: {
     marginTop: 12,
     alignItems: 'center',
   },
-
 });
