@@ -3,7 +3,7 @@
 // TODO: add the imports you need in each step (Pressable, Button, Alert, TextInput, useState...)
 import { View, Text, Image, ScrollView, StyleSheet, Platform, Pressable , Button, Alert} from 'react-native';
 
-
+import { useState } from 'react';
 
 
 
@@ -33,10 +33,11 @@ function formatCount(n) {
 
 export default function App() {
   // STEP 3: followers must grow by 1 while you are following
-  const followers = BASE_FOLLOWERS;
+  const [isFollowing, setIsFollowing] = useState(false);
+  const followers = BASE_FOLLOWERS + (isFollowing ? 1 : 0);
 
 const handleFollowPress = () => {
-  Alert.alert('Follow', 'You pressed Follow');
+  setIsFollowing(previous => !previous);
 };
 
 const handleMessagePress = () => {
@@ -116,15 +117,21 @@ const handleSharePress = () => {
             <View style={styles.actions}>
   <Pressable
   style={({ pressed }) => [
-    styles.button, styles.buttonPrimary, pressed && styles.pressed
-  
+    styles.button,
+    isFollowing ? styles.buttonFollowing : styles.buttonPrimary,
+    pressed && styles.pressed,
   ]}
-    onPress={handleFollowPress}
+  onPress={handleFollowPress}
+>
+  <Text
+    style={[
+      styles.buttonText,
+      !isFollowing && styles.buttonTextPrimary,
+    ]}
   >
-    <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
-      Follow
-    </Text>
-  </Pressable>
+    {isFollowing ? 'Following' : 'Follow'}
+  </Text>
+</Pressable>
 
   <Pressable
   style={({ pressed }) => [
@@ -297,13 +304,16 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   buttonPrimary: {
-    backgroundColor: COLORS.primary,
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
+  backgroundColor: COLORS.primary,
+},
+buttonFollowing: {
+  backgroundColor: COLORS.primaryLight,
+},
+buttonText: {
+  fontSize: 15,
+  fontWeight: '600',
+  color: COLORS.primary,
+},
   shareWrapper: {
   marginTop: 12,
   alignItems: 'center',
