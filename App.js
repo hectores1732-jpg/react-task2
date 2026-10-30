@@ -115,7 +115,10 @@ const handleSharePress = () => {
                 STEP 3: make the Follow button toggle between 'Follow' and 'Following'. */}
             <View style={styles.actions}>
   <Pressable
-    style={[styles.button, styles.buttonPrimary]}
+  style={({ pressed }) => [
+    styles.button, styles.buttonPrimary, pressed && styles.pressed
+  
+  ]}
     onPress={handleFollowPress}
   >
     <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
@@ -124,7 +127,9 @@ const handleSharePress = () => {
   </Pressable>
 
   <Pressable
-    style={styles.button}
+  style={({ pressed }) => [
+    styles.button, pressed && styles.pressed,
+  ]}
     onPress={handleMessagePress}
   >
     <Text style={styles.buttonText}>Message</Text>
@@ -302,7 +307,11 @@ const styles = StyleSheet.create({
   shareWrapper: {
   marginTop: 12,
   alignItems: 'center',
-},
+  }
+  ,
+  pressed: {
+    opacity: 0.6,
+  },
   buttonTextPrimary: {
     color: '#FFFFFF',
   },
